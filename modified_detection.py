@@ -87,12 +87,31 @@ while True:
 
     cv2.imshow("AirSim", png)
 
+    # move camera randomly
     random_y, random_x, random_z = get_random_coords(y_range, x_range, z_range)
     camera_pose = airsim.Pose(
         airsim.Vector3r(random_y, random_x, random_z),
         cam_quarter
     )
     client.simSetCameraPose(camera_name, camera_pose)
+
+    # randomize object rotation
+    ############################
+    object_names = client.simListSceneObjects("")   # returns list of all scene objects
+    # for object_name in object_names:      // loop through object names do the below
+    position = airsim.Vector3r() # randomize position here, keep it within a certain box
+    # Define the desired orientation as a quaternion
+    # Example: 90 degrees around the Z-axis
+    yaw = 90  # Degrees
+    pitch = 0
+    roll = 0
+    orientation = airsim.Quaternionr.from_euler_zyx(yaw * (3.14159 / 180), pitch * (3.14159 / 180), roll * (3.14159 / 180))
+    object_pose = airsim.Pose(position, orientation)
+    # set the object's pose
+    client.simSetObjectPose(object_name, object_pose, ignore_collision=True)
+
+    # randomize texture of objects
+    client.simSwapTextures("truck", 0)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
@@ -106,6 +125,7 @@ while True:
         cv2.imwrite(image_path, png)
         print(f"Saved {image_path}")
         image_counter += 1
+        # test simGetImage vs cv2
     elif cv2.waitKey(1) & 0xFF == ord('l'):
         current_pos = client.simGetCameraInfo(camera_name)
         print(current_pos)
