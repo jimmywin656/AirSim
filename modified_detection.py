@@ -9,12 +9,62 @@ import math
 import random
 import time
 
+# randomly spins the object in a 360 circle (yaw)
+def get_random_rotation():
+    # Generate random rotation angles in degrees
+    yaw_degrees = random.uniform(0, 360)
+    yaw_radians = yaw_degrees * (3.14159 / 180)
+    return airsim.Quaternionr(0, 0, yaw_radians)
+
 
 def get_random_coords(y_range, x_range, z_range):
     random_y = random.randint(*y_range)
     random_x = random.randint(*x_range)
     random_z = random.randint(*z_range)
     return random_y, random_x, random_z
+
+def get_random_position(first_corner, second_corner, z=0):
+    # Generate random x and y within the bounds of the box
+    x = random.uniform(first_corner[0], second_corner[0])
+    y = random.uniform(first_corner[1], second_corner[1])
+    return airsim.Vector3r(x, y, z)
+
+
+def place_objects_randomly(object_pool, first_corner, second_corner, max_num, z=0):
+    # randomly select max_num objects from pool
+    selected_objects = random.sample(object_pool, min(max_num, len(object_pool)))
+
+    for obj in selected_objects:
+        # small bug where SK_cars at z=0 float a little above the ground
+        position = get_random_position(first_corner, second_corner, z=0)
+        orientation = get_random_rotation()
+        object_pose = airsim.Pose(position, orientation)
+        client.simSetObjectPose(obj, object_pose)
+        # print(f"Placed {obj} at {position} with orientation {orientation}")
+
+
+def reset_objects_to_origin(object_pool):
+    origin_position = airsim.Vector3r(0, 0, 0)  # Define the origin position
+    for obj in object_pool:
+        # Set the object's pose to the origin
+        object_pose = airsim.Pose(origin_position, airsim.Quaternionr(0, 0, 0, 1))  # No rotation
+        client.simSetObjectPose(obj, object_pose)
+
+
+def save_box_info(objects, counter):
+    if objects:
+        bbox_path = os.path.join(temp_dir, f"detection_{counter}.txt")
+        with open(bbox_path, "w") as f:
+            for obj in objects:
+                x_min, y_min = int(obj.box2D.min.x_val), int(obj.box2D.min.y_val)
+                x_max, y_max = int(obj.box2D.max.x_val), int(obj.box2D.max.y_val)
+                f.write(f"{obj.name} {x_min} {y_min} {x_max} {y_max}\n")
+        print(f"Saved detection info to {bbox_path}")
+
+
+def save_frame(png, counter):
+        image_path = os.path.join(temp_dir, f"frame_{image_counter}.png")
+        cv2.imwrite(image_path, png)
 
 
 # connect to the AirSim simulator
@@ -33,7 +83,7 @@ car_vectors = [
     # second value changes left right or x coord: [ +-30 ] + moves left, - moves right
     # third value changes height of camera or z coord: [ -10 ] - moves cam down (z-axis)
 ]
-y_range = (-70, -30)
+y_range = (-55, -25)
 x_range = (-120, -65)
 z_range = (-50, -40)
 
@@ -46,15 +96,16 @@ cam_quarter = airsim.Quaternionr(-5, 0.55, -0.35, 0.67)
 
 # set desired camera position
 camera_pose = airsim.Pose(
-    airsim.Vector3r(-50, -95, -40),
+    airsim.Vector3r(-40, -95, -40),
     cam_quarter
 )
-client.simSetCameraPose(camera_name, camera_pose)
+# client.simSetCameraPose(camera_name, camera_pose)
 
 # set detection radius in [cm]
 client.simSetDetectionFilterRadius(camera_name, image_type, 200 * 50) 
 # add desired object name to detect in wild card/regex format
-client.simAddDetectionFilterMeshName(camera_name, image_type, "SM_*") 
+client.simAddDetectionFilterMeshName(camera_name, image_type, "Cylinder*")
+client.simAddDetectionFilterMeshName(camera_name, image_type, "SK_*")
 
 # create a small openCV window
 cv2.namedWindow("AirSim", cv2.WINDOW_NORMAL)
@@ -70,6 +121,20 @@ except OSError:
     if not os.path.isdir(temp_dir):
         raise
 
+# Instantiate object pool and define placement box
+object_pool = client.simListSceneObjects("Cylinder.*") + client.simListSceneObjects("SK_.*")
+MAX_OBJECT_NUM = 6
+first_corner = (-34.5, -82.3)
+second_corner = (-48.9, -105.4)
+
+texture_pool = [
+    "TX_Truck_Box_Normal",
+    "TX_Truck_Box_Diffuse",
+    "TX_SportsCar_Exterior_ORM",
+    "TX_Hatchback_Diffuse_0"
+]
+
+reset_objects_to_origin(object_pool)
 
 while True:
     rawImage = client.simGetImage(camera_name, image_type)
@@ -77,13 +142,12 @@ while True:
         continue
     png = cv2.imdecode(airsim.string_to_uint8_array(rawImage), cv2.IMREAD_UNCHANGED)
     objects = client.simGetDetections(camera_name, image_type)
-    # if objects:
-        # for object in objects:
-            # s = pprint.pformat(object)
-            # print("Object: %s" % s)
-
-            # cv2.rectangle(png,(int(object.box2D.min.x_val),int(object.box2D.min.y_val)),(int(object.box2D.max.x_val),int(object.box2D.max.y_val)),(255,0,0),2)
-            # cv2.putText(png, object.name, (int(object.box2D.min.x_val),int(object.box2D.min.y_val - 10)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (36,255,12))
+    if objects:
+        # save bounding box info to .txt file of all objects in frame
+        save_box_info(objects, image_counter)
+        # snap picture
+        save_frame(png, image_counter)
+        image_counter += 1
 
     cv2.imshow("AirSim", png)
 
@@ -95,20 +159,8 @@ while True:
     )
     client.simSetCameraPose(camera_name, camera_pose)
 
-    # randomize object rotation
-    ############################
-    object_names = client.simListSceneObjects("")   # returns list of all scene objects
-    # for object_name in object_names:      // loop through object names do the below
-    position = airsim.Vector3r() # randomize position here, keep it within a certain box
-    # Define the desired orientation as a quaternion
-    # Example: 90 degrees around the Z-axis
-    yaw = 90  # Degrees
-    pitch = 0
-    roll = 0
-    orientation = airsim.Quaternionr.from_euler_zyx(yaw * (3.14159 / 180), pitch * (3.14159 / 180), roll * (3.14159 / 180))
-    object_pose = airsim.Pose(position, orientation)
-    # set the object's pose
-    client.simSetObjectPose(object_name, object_pose, ignore_collision=True)
+    # Place objects in the environment
+    place_objects_randomly(object_pool, first_corner, second_corner, MAX_OBJECT_NUM)
 
     # randomize texture of objects
     client.simSwapTextures("truck", 0)
@@ -130,6 +182,7 @@ while True:
         current_pos = client.simGetCameraInfo(camera_name)
         print(current_pos)
 
-    time.sleep(0.5)
+    time.sleep(1)
+    reset_objects_to_origin(object_pool)
 
 cv2.destroyAllWindows() 
