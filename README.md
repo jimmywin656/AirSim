@@ -34,3 +34,24 @@ Download an environment created by [Airsim](https://github.com/microsoft/AirSim/
 - backports.weakref
 - backports.ssl_match_hostname
 - opencv-python
+
+### 3D Models
+1. Baseball Bat - https://www.fab.com/listings/3359cd97-250c-474e-a3a4-892fc58cd7db
+2. Tennis Racket - https://www.fab.com/listings/fc85c31f-0b0e-4b32-8bf0-553e296fa316
+3. Sports Balls:
+  - basketball - https://www.fab.com/listings/bab7cb14-49ad-4864-919e-432d0616f315
+  - volleyball - https://www.fab.com/listings/bf1309e2-2e4e-4038-b829-515a658dae0d
+  - football - https://www.fab.com/listings/8acf36b1-1850-4175-81a1-fe3878538b1b
+  - soccerball - https://www.fab.com/listings/538e59cf-0dc8-4de2-81ee-553089bb1de5 & https://www.fab.com/listings/8364616b-935a-46fa-ad2c-f85949d15469
+4. Mannequin - https://www.fab.com/listings/c55ce22b-4f0b-440f-9e9f-f1e7746cc7bf
+5. Cars - https://www.fab.com/listings/2909157b-ddfa-4cef-a925-69dc2467021f & https://www.fab.com/listings/591e3b3f-9d49-4cd2-8e28-d471c1a10cab
+6. Motorcycle - https://www.fab.com/listings/64f26e0c-f69b-48eb-b0ac-02a611dc1585
+7. Airplane -
+8. Bus -
+9. Boat -
+10. Stop sign -
+11. Snowboard -
+12. Umbrella -
+13. Bed/Mattress (twin size) -
+14. Suitcase -
+15. Skis - 
