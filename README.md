@@ -56,3 +56,24 @@ Download an environment created by [Airsim](https://github.com/microsoft/AirSim/
 14. Suitcase - https://www.fab.com/listings/565176e8-4b55-4a06-a647-20e8b1c27012
 15. Skis - https://www.fab.com/listings/cc5d84fd-b0fb-4c40-a837-c46fc3bf8ec9
    
+Working models:
+1. Football
+2. Cars
+3. Mattress
+4. Baseball bat
+5. Suitcase (metal)
+6. Umbrella (90%)
+7. Soccer ball 
+8. Basketball
+9. Volleyball
+10. Tennis Racket
+11. Mannnequin (sort of)
+12. Motorcycle (80%)
+13. Boat
+14. Stop sign
+
+Non-working models:
+1. Snowboard
+2. Skis
+3. Airplane (kinda)
+4. Bus
