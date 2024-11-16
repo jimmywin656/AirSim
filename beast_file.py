@@ -22,16 +22,17 @@ mattress = "Matress.*"
 baseball_bat = "Baseball.*"
 suitcase = "luggage.*"
 umbrella = "Black_Umbrella.*"
-volleyball = "vollleyball.*"
-volleyball2 = "volley_ball.*"
+volleyball = "volley_ball.*"
 tennis_r = "tenis_.*"
 stop_sign = "Stop_.*"
 motorcycle = "Generic_Bike.*"
 mannequin = "Default_.*"
 boat = "small_boat.*"
 basketball = "basketball.*"
-obj_list = [car, soccer_ball, football, mattress, baseball_bat, suitcase, umbrella, volleyball, volleyball2,
+obj_list = [car, soccer_ball, football, mattress, baseball_bat, suitcase, umbrella, volleyball,
             tennis_r, stop_sign, motorcycle, mannequin, boat, basketball]
+num_objs = {obj: 1500 for obj in obj_list}
+print(num_objs)
 
 # used for positioning CAMERA not objects
 def get_random_coords(y_range, x_range, z_range):
@@ -71,20 +72,33 @@ def get_valid_position(first_corner, second_corner, existing_locations, min_dist
             return new_position
 
 def place_objects_randomly(object_pool, first_corner, second_corner, max_num):
+    # filter object_pool to only include objects that have > 0 instances to be placed
+    valid_objects = [
+        obj for obj in object_pool
+        for pattern in num_objs
+        if re.match(pattern, obj) and num_objs[pattern] > 0
+    ]
     # randomly select max_num objects from pool
-    selected_objects = random.sample(object_pool, min(max_num, len(object_pool)))
+    selected_objects = random.sample(valid_objects, min(max_num, len(valid_objects)))
     # empty list of poses (object locations)
     random_locations =  []
 
-    for obj in selected_objects:
-        # get valid position
-        position = get_valid_position(first_corner, second_corner, random_locations, min_distance=6)    # tweak min_distance to separate objects
-        orientation = get_random_rotation()     # bug where objects that are rotated (stop sign, etc...) get rotated and are not in ideal rotation
-        # add to random_locations list
-        random_locations.append(position)
-        # before adding pose to list of locations, check to make sure they are far enough apart from each other
-        object_pose = airsim.Pose(position, orientation)             
-        client.simSetObjectPose(obj, object_pose, True)
+    for obj_name in selected_objects:
+        for pattern in num_objs:    # pattern is just the regex key
+            if re.match(pattern, obj_name):
+                if num_objs[pattern] > 0:
+                    # get valid position
+                    position = get_valid_position(first_corner, second_corner, random_locations, min_distance=6)    # tweak min_distance to separate objects
+                    orientation = get_random_rotation()     # bug where objects that are rotated (stop sign, etc...) get rotated and are not in ideal rotation
+                    # add to random_locations list
+                    random_locations.append(position)
+                    # before adding pose to list of locations, check to make sure they are far enough apart from each other
+                    object_pose = airsim.Pose(position, orientation)             
+                    client.simSetObjectPose(obj_name, object_pose, True)
+
+                    # decrement count from pattern's total
+                    num_objs[pattern] -= 1
+                    print(f"Placed {obj_name}. Remaining: {num_objs[pattern]}")
 
 def reset_objects(object_pool):
     far_location = airsim.Vector3r(1000, 1000, 1000)  # define the origin position
@@ -182,21 +196,6 @@ client.simSetCameraPose(camera_name, camera_pose)
 client.simSetDetectionFilterRadius(camera_name, image_type, 200 * 50) 
 # add desired object name to detect in wild card/regex format
 add_mesh_filters(client=client, cam_name=camera_name, image_type=image_type, obj_list=obj_list)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, car) 
-# client.simAddDetectionFilterMeshName(camera_name, image_type, soccer_ball) 
-# client.simAddDetectionFilterMeshName(camera_name, image_type, football)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, mattress)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, baseball_bat)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, suitcase)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, umbrella)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, volleyball)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, volleyball2)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, tennis_r)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, stop_sign)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, motorcycle)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, mannequin)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, boat)
-# client.simAddDetectionFilterMeshName(camera_name, image_type, basketball)
 
 # create a small openCV window
 cv2.namedWindow("AirSim", cv2.WINDOW_NORMAL)
@@ -215,29 +214,15 @@ except OSError:
 
 # Instantiate object pool and define placement box
 object_pool = generate_object_pool(client, obj_list)
-# object_pool = client.simListSceneObjects(car)   # change this to SM_* if on beast
-# object_pool += client.simListSceneObjects(soccer_ball)  
-# object_pool += client.simListSceneObjects(football)  
-# object_pool += client.simListSceneObjects(mattress)  
-# object_pool += client.simListSceneObjects(baseball_bat)  
-# object_pool += client.simListSceneObjects(suitcase)  
-# object_pool += client.simListSceneObjects(umbrella)  
-# object_pool += client.simListSceneObjects(volleyball)  
-# object_pool += client.simListSceneObjects(volleyball2)  
-# object_pool += client.simListSceneObjects(tennis_r)
-# object_pool += client.simListSceneObjects(stop_sign)  
-# object_pool += client.simListSceneObjects(motorcycle)  
-# object_pool += client.simListSceneObjects(mannequin)  
-# object_pool += client.simListSceneObjects(boat)
-# object_pool += client.simListSceneObjects(basketball)  
 
 print("OBJECT POOL: ")
 print(object_pool)
-MAX_OBJ_NUM = 5
+# 1500 of each object x 14 models = 21,000 total objects / 7 objects per image = 3,000 images for dataset
+MAX_OBJ_NUM = 7
 first_corner = (-40, -80)
 second_corner = (-60, -105)  # change this
 
-while True and image_counter < DATASET_LENGTH:
+while True and image_counter < DATASET_LENGTH:      # this needs to get changed to finish when all objs_nums have 0
     rawImage = client.simGetImage(camera_name, image_type)
     if not rawImage:
         continue
@@ -276,7 +261,7 @@ while True and image_counter < DATASET_LENGTH:
         current_pos = client.simGetCameraInfo(camera_name)
         print(current_pos)
 
-    time.sleep(0.5)
+    time.sleep(.1)
     reset_objects(object_pool)      # works on unreal engine but on opencv gui, objects do not show up
 
 cv2.destroyAllWindows() 
