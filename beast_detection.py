@@ -176,7 +176,7 @@ MAX_OBJ_NUM = 5
 first_corner = (-40, -80)
 second_corner = (-60, -105)  # change this
 
-while True and image_counter <= DATASET_LENGTH:
+while True and image_counter < DATASET_LENGTH:
     rawImage = client.simGetImage(camera_name, image_type)
     if not rawImage:
         continue
