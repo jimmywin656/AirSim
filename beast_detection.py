@@ -24,8 +24,8 @@ IMG = {
 # OBJECT STRINGS (regex from name of object within UE environment)
 ###############################################
 car = "SK_.*"
-soccer_ball = "football.*"
-football = "Wilson_.*"
+soccer_ball = "soccerball.*"
+football = "Wilson_.*"      # football
 mattress = "Matress.*"
 baseball_bat = "Baseball.*"
 suitcase = "luggage.*"
@@ -34,16 +34,17 @@ volleyball = "volleyball.*"
 tennis_r = "tenis_.*"
 stop_sign = "Stop_.*"
 motorcycle = "motorcycle.*"
-mannequin = "Default_.*"
+# mannequin = "Default_.*"
 boat = "small_boat_.*"
 basketball = "Basketball_.*"
 ###############################################
 # Add variables above to obj_list
 obj_list = [car, soccer_ball, football, mattress, baseball_bat, suitcase, umbrella, volleyball,
-            tennis_r, stop_sign, motorcycle, mannequin, boat, basketball]
+            tennis_r, stop_sign, motorcycle, boat, basketball]
+# obj_list = [stop_sign]
 mesh_list = [obj.replace(".", "") for obj in obj_list]
 # variable used to keep track of items left for each object
-num_objs = {obj: 1500 for obj in obj_list}
+num_objs = {obj: 1500 for obj in obj_list}         # 1500
 print(num_objs)
 ###############################################
 ###############################################
@@ -66,7 +67,7 @@ car_vectors = [
 ]
 x_range = (-68, -37)   # (-65, -40)     solid lines, can tweak a little to get them closer to the edge
 y_range = (-108, -77)    # (-105, -80)
-z_range = (-40, -40)    # (-50, -45) 
+z_range = (-40, -30)    # (-50, -45) for cars   // for all objects (-40, -30)
 ranges = [x_range, y_range, z_range]
 
 car_quarterns = [
@@ -92,11 +93,11 @@ functions.add_mesh_filters(client, camera_name, image_type, mesh_list)
 cv2.namedWindow("AirSim", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("AirSim", 720, 480)
 
-temp_dir = os.path.join(tempfile.gettempdir(), "dataset_images")
+temp_dir = os.path.join(tempfile.gettempdir(), "final_dataset_images")         
 print("Images will be saved to %s" % temp_dir)
 
 image_counter = 0
-DATASET_LENGTH = 500
+DATASET_LENGTH = 2000
 try:
     os.makedirs(temp_dir)
 except OSError:
@@ -121,14 +122,19 @@ while True and image_counter < DATASET_LENGTH:
     if not rawImage:
         continue
     png = cv2.imdecode(airsim.string_to_uint8_array(rawImage), cv2.IMREAD_UNCHANGED)
-    objects = client.simGetDetections(camera_name, image_type)
-    if objects:
-        # save bounding box info to .txt file for all objects in frame
-        functions.save_box_info(objects, image_counter, png, IMG, temp_dir)
-        functions.save_frame(png, image_counter, temp_dir)
-        image_counter += 1
 
     cv2.imshow("AirSim", png)
+
+    objects = client.simGetDetections(camera_name, image_type)
+    if objects and len(objects) == MAX_OBJ_NUM:
+        # save bounding box info to .txt file for all objects in frame
+        functions.save_frame(png, image_counter, temp_dir, objects, IMG)
+        # functions.save_box_info(objects, image_counter, png, IMG, temp_dir)
+        # decrement obj counts after saving them
+        image_counter += 1
+        time.sleep(2)
+
+    time.sleep(.1)
 
     functions.reset_objects_to_origin(object_pool, client)
 
@@ -137,8 +143,7 @@ while True and image_counter < DATASET_LENGTH:
     # functions.place_objects_randomly(object_pool, first_corner, second_corner, MAX_OBJ_NUM, client)
     functions.place_objects_randomly(object_pool, num_objs, first_corner, second_corner, MAX_OBJ_NUM, client)
 
-    pyautogui.press('space')
-
+    # pyautogui.press('space')
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
@@ -156,8 +161,7 @@ while True and image_counter < DATASET_LENGTH:
     elif cv2.waitKey(1) & 0xFF == ord('l'):
         current_pos = client.simGetCameraInfo(camera_name)
         print(current_pos)
-
-    time.sleep(.1)
+          
     # resetting objects to origin results in bug where objects do not appear on cv window output
 
 cv2.destroyAllWindows() 
